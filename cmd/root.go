@@ -3,10 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dhcgn/go-obsidian-ai-sum/internal/fswalker"
 	"github.com/dhcgn/go-obsidian-ai-sum/internal/summarizer"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -21,7 +24,7 @@ var (
 )
 
 const (
-	LimitChars = 10_000
+	LimitChars = 50_000
 )
 
 var rootCmd = &cobra.Command{
@@ -31,62 +34,115 @@ var rootCmd = &cobra.Command{
 		if apiKey == "" {
 			apiKey = os.Getenv("OPENAI_API_KEY")
 			if apiKey == "" {
-				fmt.Println("API key is required. Provide it via --api-key flag or OPENAI_API_KEY environment variable.")
+				pterm.Error.Println("API key is required. Provide it via --api-key flag or OPENAI_API_KEY environment variable.")
 				os.Exit(1)
 			}
 		}
 
 		start := time.Now()
 		files, err := fswalker.ReadFiles(path, override)
-		fmt.Println("Reading files took:", time.Since(start))
+		pterm.Info.Printf("Reading files took: %v\n", time.Since(start))
 		if err != nil {
-			fmt.Printf("Error reading files: %v\n", err)
+			pterm.Error.Printf("Error reading files: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Found", len(files), "files to summarize")
+		pterm.Info.Printf("Found %d files to summarize\n", len(files))
 
 		prompt := summarizer.LoadPrompt(prompt)
 		hash := summarizer.ComputeHash(prompt)
-		fmt.Println("Prompt template hash:", hash)
+		pterm.Info.Printf("Prompt template hash: %s\n", hash)
 		summarizerInstance := summarizer.OpenAISummarizer{
 			APIKey: apiKey,
 			Debug:  debug,
 		}
 
 		if dryrun {
-			fmt.Println("Dry run mode - no API calls will be made.")
+			pterm.Warning.Println("Dry run mode - no API calls will be made.")
 		}
 
 		start = time.Now()
-		for _, file := range files {
-			content, err := os.ReadFile(file)
-			if err != nil {
-				fmt.Printf("Error reading file %s: %v\n", file, err)
-				continue
-			}
 
-			// only the first 10.000 characters are sent to the API
-			if len(content) > LimitChars {
-				content = content[:LimitChars]
-			}
+		const workerCount = 10
+		var wg sync.WaitGroup
+		jobChan := make(chan string, len(files))
+		errChan := make(chan error, len(files))
 
-			if dryrun {
-				continue
-			}
+		// Create progress bar
+		progress, _ := pterm.DefaultProgressbar.
+			WithTotal(len(files)).
+			WithTitle("Summarizing files").
+			Start()
 
-			summary, _, err := summarizerInstance.Summarize(string(content), file, prompt)
-			if err != nil {
-				fmt.Printf("Error summarizing file %s: %v\n", file, err)
-				continue
-			}
+		var processedCount int32
 
-			err = summarizer.InjectSummary(file, summary, hash)
-			if err != nil {
-				fmt.Printf("Error injecting summary into file %s: %v\n", file, err)
-			}
+		// Start workers
+		for i := 0; i < workerCount; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for file := range jobChan {
+					content, err := os.ReadFile(file)
+					if err != nil {
+						errChan <- fmt.Errorf("error reading file %s: %v", file, err)
+						continue
+					}
+
+					if len(content) > LimitChars {
+						pterm.Warning.Printf("File %s with %d exceeds %d characters, truncating...\n", file, len(content), LimitChars)
+						content = content[:LimitChars]
+					}
+
+					if dryrun {
+						atomic.AddInt32(&processedCount, 1)
+						progress.UpdateTitle(fmt.Sprintf("(Dryrun) Processing %d/%d", atomic.LoadInt32(&processedCount), len(files)))
+						<-time.After(50 * time.Millisecond)
+						progress.Increment()
+						continue
+					}
+
+					progress.UpdateTitle(fmt.Sprintf("Summarizing %s", file))
+					summary, _, err := summarizerInstance.Summarize(string(content), file, prompt)
+					if err != nil {
+						errChan <- fmt.Errorf("error summarizing file %s: %v", file, err)
+						continue
+					}
+
+					err = summarizer.InjectSummary(file, summary, hash)
+					if err != nil {
+						errChan <- fmt.Errorf("error injecting summary into file %s: %v", file, err)
+					}
+
+					atomic.AddInt32(&processedCount, 1)
+					progress.UpdateTitle(fmt.Sprintf("Processed %d/%d", atomic.LoadInt32(&processedCount), len(files)))
+					progress.Increment()
+				}
+			}()
 		}
-		fmt.Println("Summarization took:", time.Since(start))
+
+		// Send jobs to workers
+		for _, file := range files {
+			jobChan <- file
+		}
+		close(jobChan)
+
+		// Wait for all workers to complete
+		wg.Wait()
+		close(errChan)
+
+		progress.Stop()
+
+		// Handle errors
+		errorCount := 0
+		for err := range errChan {
+			pterm.Error.Println(err)
+			errorCount++
+		}
+
+		pterm.Success.Printf("Summarization completed in %v\n", time.Since(start))
+		if errorCount > 0 {
+			pterm.Warning.Printf("Encountered %d errors during processing\n", errorCount)
+		}
 	},
 }
 

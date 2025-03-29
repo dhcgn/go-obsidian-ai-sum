@@ -7,6 +7,20 @@ import (
 	"strings"
 )
 
+var defaultIgnoreDirs = []string{
+	".git",
+	".obsidian",
+}
+
+func shouldIgnoreDir(name string) bool {
+	for _, dir := range defaultIgnoreDirs {
+		if name == dir {
+			return true
+		}
+	}
+	return false
+}
+
 // ReadFiles reads a single file or all Markdown files in a folder recursively
 func ReadFiles(path string, override bool) ([]string, error) {
 	var files []string
@@ -20,6 +34,9 @@ func ReadFiles(path string, override bool) ([]string, error) {
 		err = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
+			}
+			if info.IsDir() && shouldIgnoreDir(info.Name()) {
+				return filepath.SkipDir
 			}
 			if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
 				if !override {
