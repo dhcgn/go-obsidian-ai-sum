@@ -14,13 +14,46 @@ func TestUpdateFrontmatter(t *testing.T) {
 		hash            string
 	}{
 		{
-			name: "Empty file with no frontmatter",
+			name:           "Empty file with no frontmatter",
+			initialContent: ``,
+			expectedContent: `---
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+---
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
+		},
+		{
+			name: "Empty file with no frontmatter - only one line break",
 			initialContent: `
 `,
 			expectedContent: `---
 summarize_ai: Test summary
 summarize_ai_hash: TestHash
 ---
+
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
+		},
+		{
+			name: "File with frontmatter and old summarize_ai keys",
+			initialContent: `---
+existing_key: existing_value
+summarize_ai: Test summary MUST OVERRIDE
+summarize_ai_hash: TestHash MUST OVERRIDE
+existing_key_lower: existing_value
+---
+Content below frontmatter.
+`,
+			expectedContent: `---
+existing_key: existing_value
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+existing_key_lower: existing_value
+---
+Content below frontmatter.
 `,
 			summary: "Test summary",
 			hash:    "TestHash",
@@ -37,6 +70,25 @@ existing_key: existing_value
 summarize_ai: Test summary
 summarize_ai_hash: TestHash
 ---
+Content below frontmatter.
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
+		},
+		{
+			name: "File with frontmatter but no summarize_ai keys and empty line",
+			initialContent: `---
+existing_key: existing_value
+---
+
+Content below frontmatter.
+`,
+			expectedContent: `---
+existing_key: existing_value
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+---
+
 Content below frontmatter.
 `,
 			summary: "Test summary",
