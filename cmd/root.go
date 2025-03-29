@@ -48,6 +48,7 @@ var rootCmd = &cobra.Command{
 
 		prompt := summarizer.LoadPrompt(prompt)
 		hash := summarizer.ComputeHash(prompt)
+		fmt.Println("Prompt template hash:", hash)
 		summarizerInstance := summarizer.OpenAISummarizer{
 			APIKey: apiKey,
 			Debug:  debug,
