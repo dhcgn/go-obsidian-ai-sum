@@ -48,8 +48,13 @@ func UpdateFrontmatter(filePath string, summary string, hash string) error {
 	}
 
 	var fm map[string]interface{}
-	if err := yaml.Unmarshal(frontmatter, &fm); err != nil {
-		return fmt.Errorf("failed to unmarshal frontmatter: %w", err)
+	if len(frontmatter) == 0 {
+		// Initialize a new frontmatter if none exists
+		fm = make(map[string]interface{})
+	} else {
+		if err := yaml.Unmarshal(frontmatter, &fm); err != nil {
+			return fmt.Errorf("failed to unmarshal frontmatter: %w", err)
+		}
 	}
 
 	fm["summarize_ai"] = summary
@@ -60,7 +65,17 @@ func UpdateFrontmatter(filePath string, summary string, hash string) error {
 		return fmt.Errorf("failed to marshal updated frontmatter: %w", err)
 	}
 
-	updatedContent := bytes.Replace(content, frontmatter, updatedFrontmatter, 1)
+	var updatedContent []byte
+	if len(frontmatter) == 0 {
+		// Add new frontmatter to the top of the file
+		updatedContent = append([]byte("---\n"), updatedFrontmatter...)
+		updatedContent = append(updatedContent, []byte("---\n")...)
+		updatedContent = append(updatedContent, content...)
+	} else {
+		// Replace existing frontmatter
+		updatedContent = bytes.Replace(content, frontmatter, updatedFrontmatter, 1)
+	}
+
 	if err := ioutil.WriteFile(filePath, updatedContent, os.ModePerm); err != nil {
 		return fmt.Errorf("failed to write updated file: %w", err)
 	}
@@ -72,7 +87,8 @@ func UpdateFrontmatter(filePath string, summary string, hash string) error {
 func extractFrontmatter(content []byte) ([]byte, error) {
 	start := bytes.Index(content, []byte("---"))
 	if start == -1 {
-		return nil, fmt.Errorf("no frontmatter start delimiter found")
+		// Return an empty frontmatter if none is found
+		return []byte{}, nil
 	}
 
 	end := bytes.Index(content[start+3:], []byte("---"))

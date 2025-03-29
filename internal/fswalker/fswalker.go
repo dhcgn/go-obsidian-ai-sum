@@ -53,13 +53,5 @@ func ReadFiles(path string, override bool) ([]string, error) {
 		}
 	}
 
-	// TODO Remove
-	fmt.Println("Files to summarize:")
-	for _, file := range files {
-		fmt.Println(file)
-	}
-	if len(files) == 0 {
-		fmt.Println("No files to summarize.")
-	}
 	return files, nil
 }
