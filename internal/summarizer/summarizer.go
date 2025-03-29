@@ -3,8 +3,8 @@ package summarizer
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"io/ioutil"
+
+	"github.com/dhcgn/go-obsidian-ai-sum/internal/frontmatter"
 )
 
 // LoadPrompt loads the prompt from a flag or uses a default prompt

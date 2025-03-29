@@ -1,10 +1,8 @@
 package summarizer
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -42,7 +40,7 @@ func (s *OpenAISummarizer) Summarize(text, prompt string) (string, error) {
 		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
