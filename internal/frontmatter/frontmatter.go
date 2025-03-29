@@ -3,20 +3,21 @@ package frontmatter
 import (
 	"bytes"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Frontmatter represents the YAML frontmatter structure
 type Frontmatter struct {
-	SummarizeAI    string   `yaml:"summarize_ai,omitempty"`
-	SummarizeAIHash string  `yaml:"summarize_ai_hash,omitempty"`
+	SummarizeAI     string `yaml:"summarize_ai,omitempty"`
+	SummarizeAIHash string `yaml:"summarize_ai_hash,omitempty"`
 }
 
 // ParseFrontmatter parses the YAML frontmatter from a Markdown file
 func ParseFrontmatter(filePath string) (map[string]interface{}, error) {
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -36,7 +37,7 @@ func ParseFrontmatter(filePath string) (map[string]interface{}, error) {
 
 // UpdateFrontmatter updates the YAML frontmatter with new summarize_ai and summarize_ai_hash fields
 func UpdateFrontmatter(filePath string, summary string, hash string) error {
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}

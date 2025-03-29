@@ -2,7 +2,6 @@ package fswalker
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +23,7 @@ func ReadFiles(path string, override bool) ([]string, error) {
 			}
 			if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
 				if !override {
-					content, err := ioutil.ReadFile(path)
+					content, err := os.ReadFile(path)
 					if err != nil {
 						return err
 					}
@@ -42,7 +41,7 @@ func ReadFiles(path string, override bool) ([]string, error) {
 	} else {
 		if strings.HasSuffix(info.Name(), ".md") {
 			if !override {
-				content, err := ioutil.ReadFile(path)
+				content, err := os.ReadFile(path)
 				if err != nil {
 					return nil, fmt.Errorf("failed to read file: %w", err)
 				}
@@ -54,5 +53,13 @@ func ReadFiles(path string, override bool) ([]string, error) {
 		}
 	}
 
+	// TODO Remove
+	fmt.Println("Files to summarize:")
+	for _, file := range files {
+		fmt.Println(file)
+	}
+	if len(files) == 0 {
+		fmt.Println("No files to summarize.")
+	}
 	return files, nil
 }

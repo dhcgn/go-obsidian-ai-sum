@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dhcgn/go-obsidian-ai-sum/internal/fswalker"
+	"github.com/dhcgn/go-obsidian-ai-sum/internal/summarizer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -13,6 +15,7 @@ var (
 	apiKey   string
 	prompt   string
 	override bool
+	debug    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -27,8 +30,37 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		// Add logic to handle the input path and pass it to the internal packages
-		// Add logic to read the API key from the environment variable if not provided via flag
+		files, err := fswalker.ReadFiles(path, override)
+		if err != nil {
+			fmt.Printf("Error reading files: %v\n", err)
+			os.Exit(1)
+		}
+
+		prompt := summarizer.LoadPrompt(prompt)
+		hash := summarizer.ComputeHash(prompt)
+		summarizerInstance := summarizer.OpenAISummarizer{
+			APIKey: apiKey,
+			Debug:  debug,
+		}
+
+		for _, file := range files {
+			content, err := os.ReadFile(file)
+			if err != nil {
+				fmt.Printf("Error reading file %s: %v\n", file, err)
+				continue
+			}
+
+			summary, err := summarizerInstance.Summarize(string(content), prompt)
+			if err != nil {
+				fmt.Printf("Error summarizing file %s: %v\n", file, err)
+				continue
+			}
+
+			err = summarizer.InjectSummary(file, summary, hash)
+			if err != nil {
+				fmt.Printf("Error injecting summary into file %s: %v\n", file, err)
+			}
+		}
 	},
 }
 
@@ -46,6 +78,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", "", "API key for the AI provider")
 	rootCmd.PersistentFlags().StringVar(&prompt, "prompt", "", "Custom prompt for summarization")
 	rootCmd.PersistentFlags().BoolVar(&override, "override", false, "Override existing summaries")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode to log payloads")
 
 	rootCmd.MarkPersistentFlagRequired("path")
 }
