@@ -14,25 +14,50 @@ func TestUpdateFrontmatter(t *testing.T) {
 		hash            string
 	}{
 		{
-			name:            "Empty file with no frontmatter",
-			initialContent:  "",
-			expectedContent: "---\nsummarize_ai: Test summary\nsummarize_ai_hash: TestHash\n---\n",
-			summary:         "Test summary",
-			hash:            "TestHash",
+			name: "Empty file with no frontmatter",
+			initialContent: `
+`,
+			expectedContent: `---
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+---
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
 		},
 		{
-			name:            "File with frontmatter but no summarize_ai keys",
-			initialContent:  "---\nexisting_key: existing_value\n---\nContent below frontmatter.",
-			expectedContent: "---\nexisting_key: existing_value\nsummarize_ai: Test summary\nsummarize_ai_hash: TestHash\n---\nContent below frontmatter.",
-			summary:         "Test summary",
-			hash:            "TestHash",
+			name: "File with frontmatter but no summarize_ai keys",
+			initialContent: `---
+existing_key: existing_value
+---
+Content below frontmatter.
+`,
+			expectedContent: `---
+existing_key: existing_value
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+---
+Content below frontmatter.
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
 		},
 		{
-			name:            "File with frontmatter containing unrelated keys",
-			initialContent:  "---\nunrelated_key: unrelated_value\n---\nContent below frontmatter.",
-			expectedContent: "---\nunrelated_key: unrelated_value\nsummarize_ai: Test summary\nsummarize_ai_hash: TestHash\n---\nContent below frontmatter.",
-			summary:         "Test summary",
-			hash:            "TestHash",
+			name: "File with frontmatter containing unrelated keys",
+			initialContent: `---
+unrelated_key: unrelated_value
+---
+Content below frontmatter.
+`,
+			expectedContent: `---
+unrelated_key: unrelated_value
+summarize_ai: Test summary
+summarize_ai_hash: TestHash
+---
+Content below frontmatter.
+`,
+			summary: "Test summary",
+			hash:    "TestHash",
 		},
 	}
 
@@ -64,7 +89,17 @@ func TestUpdateFrontmatter(t *testing.T) {
 
 			// Compare the updated content with the expected content
 			if string(updatedContent) != tt.expectedContent {
-				t.Errorf("Content mismatch.\nExpected:\n%s\nGot:\n%s", tt.expectedContent, string(updatedContent))
+				// Find the first differing character
+				minLen := min(len(updatedContent), len(tt.expectedContent))
+				var diffIndex int
+				for diffIndex = 0; diffIndex < minLen-1; diffIndex++ {
+					if updatedContent[diffIndex] != tt.expectedContent[diffIndex] {
+						break
+					}
+				}
+				t.Errorf("Content mismatch.\nExpected:\n%s\nGot:\n%s\nFirst difference at index %d: expected '%c' (0x%x), got '%c' (0x%x)",
+					tt.expectedContent, string(updatedContent), diffIndex, tt.expectedContent[diffIndex], tt.expectedContent[diffIndex],
+					updatedContent[diffIndex], updatedContent[diffIndex])
 			}
 		})
 	}
