@@ -1,11 +1,11 @@
-Summarize the following content and finde relevant tags, be short and pricese.
+Summarize the following content and finde relevant tags, be short and precise.
 
 Follow these rules:
 
 - The summarize must be in the same langage as the content is
-- Sometime I give you the Path in Obsidian Vault, use these 
+- Sometimes I give you the Path in Obsidian Vault, use these for more context and information.
 
-Path in Obsidian Vault: {{Obsidan Vault Path}}
+File path in Obsidian vault: {{Obsidan Vault Path}}
 
 Content:
 
