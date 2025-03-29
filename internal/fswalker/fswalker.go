@@ -21,9 +21,15 @@ func shouldIgnoreDir(name string) bool {
 	return false
 }
 
+// FileInfo holds information about a markdown file
+type FileInfo struct {
+	Path           string
+	CharacterCount int
+}
+
 // ReadFiles reads a single file or all Markdown files in a folder recursively
-func ReadFiles(path string, override bool) ([]string, error) {
-	var files []string
+func ReadFiles(path string, override bool) ([]FileInfo, error) {
+	var files []FileInfo
 
 	info, err := os.Stat(path)
 	if err != nil {
@@ -39,16 +45,23 @@ func ReadFiles(path string, override bool) ([]string, error) {
 				return filepath.SkipDir
 			}
 			if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
-				if !override {
-					content, err := os.ReadFile(path)
-					if err != nil {
-						return err
-					}
-					if strings.Contains(string(content), "summarize_ai:") {
-						return nil
-					}
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return err
 				}
-				files = append(files, path)
+
+				if len(content) == 0 {
+					return nil
+				}
+
+				if !override && strings.Contains(string(content), "summarize_ai:") {
+					return nil
+				}
+
+				files = append(files, FileInfo{
+					Path:           path,
+					CharacterCount: len(content),
+				})
 			}
 			return nil
 		})
@@ -57,16 +70,19 @@ func ReadFiles(path string, override bool) ([]string, error) {
 		}
 	} else {
 		if strings.HasSuffix(info.Name(), ".md") {
-			if !override {
-				content, err := os.ReadFile(path)
-				if err != nil {
-					return nil, fmt.Errorf("failed to read file: %w", err)
-				}
-				if strings.Contains(string(content), "summarize_ai:") {
-					return nil, nil
-				}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read file: %w", err)
 			}
-			files = append(files, path)
+
+			if !override && strings.Contains(string(content), "summarize_ai:") {
+				return nil, nil
+			}
+
+			files = append(files, FileInfo{
+				Path:           path,
+				CharacterCount: len(content),
+			})
 		}
 	}
 

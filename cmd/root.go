@@ -57,6 +57,38 @@ var rootCmd = &cobra.Command{
 			Debug:  debug,
 		}
 
+		// Cost estimation
+		// 1 token 4 characters, pricing: $0.150 / 1M tokens
+		var costs float64
+		var costsLimited float64
+		promptLength := len(prompt)
+		for _, file := range files {
+			costs += float64(file.CharacterCount+promptLength) / 4 * 0.150 / 1_000_000
+			if file.CharacterCount > LimitChars {
+				costsLimited += float64(LimitChars+promptLength) / 4 * 0.150 / 1_000_000
+			} else {
+				costsLimited += float64(file.CharacterCount+promptLength) / 4 * 0.150 / 1_000_000
+			}
+		}
+
+		pterm.Info.Printf("Estimated costs for summarizing all files: $%.2f\n", costsLimited)
+		pterm.Info.Printf("Estimated costs if summarizing all files without truncate after limit: $%.2f\n", costs)
+
+		// proceed?
+		if !dryrun {
+			confirm, err := pterm.DefaultInteractiveConfirm.
+				WithDefaultText("Proceed with summarization?").
+				Show()
+			if err != nil {
+				pterm.Error.Printf("Error during confirmation: %v\n", err)
+				os.Exit(1)
+			}
+			if !confirm {
+				pterm.Info.Println("Aborting summarization.")
+				os.Exit(0)
+			}
+		}
+
 		if dryrun {
 			pterm.Warning.Println("Dry run mode - no API calls will be made.")
 		}
@@ -122,7 +154,7 @@ var rootCmd = &cobra.Command{
 
 		// Send jobs to workers
 		for _, file := range files {
-			jobChan <- file
+			jobChan <- file.Path
 		}
 		close(jobChan)
 
