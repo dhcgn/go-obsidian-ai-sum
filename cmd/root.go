@@ -50,7 +50,7 @@ var rootCmd = &cobra.Command{
 				continue
 			}
 
-			summary, _, err := summarizerInstance.Summarize(string(content), prompt)
+			summary, _, err := summarizerInstance.Summarize(string(content), file, prompt)
 			if err != nil {
 				fmt.Printf("Error summarizing file %s: %v\n", file, err)
 				continue
