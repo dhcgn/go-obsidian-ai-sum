@@ -18,6 +18,10 @@ var (
 	debug    bool
 )
 
+const (
+	LimitChars = 10_000
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "go-obsidian-ai-sum",
 	Short: "Summarize Obsidian Markdown pages using AI",
@@ -48,6 +52,11 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				fmt.Printf("Error reading file %s: %v\n", file, err)
 				continue
+			}
+
+			// only the first 10.000 characters are sent to the API
+			if len(content) > LimitChars {
+				content = content[:LimitChars]
 			}
 
 			summary, _, err := summarizerInstance.Summarize(string(content), file, prompt)
