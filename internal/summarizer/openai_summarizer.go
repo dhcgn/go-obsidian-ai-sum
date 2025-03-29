@@ -27,7 +27,13 @@ type OpenAISummarizer struct {
 func (s *OpenAISummarizer) Summarize(text, prompt string) (string, []string, error) {
 	url := "https://api.openai.com/v1/responses"
 
-	escapedPrompt, err := json.Marshal(prompt + "\n\nText:\n" + text)
+	if strings.Contains(prompt, `{{Text}}`) {
+		prompt = strings.ReplaceAll(prompt, "{{Text}}", text)
+	} else {
+		return "", nil, fmt.Errorf("prompt must contain {{Text}} placeholder")
+	}
+
+	escapedPrompt, err := json.Marshal(prompt)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to escape prompt to JSON: %w", err)
 	}

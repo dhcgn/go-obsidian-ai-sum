@@ -2,9 +2,16 @@ package summarizer
 
 import (
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 
 	"github.com/dhcgn/go-obsidian-ai-sum/internal/frontmatter"
+)
+
+var (
+	// DefaultPrompt is the default prompt used for summarization
+	//go:embed embed/prompt.md
+	defaultPrompt string
 )
 
 // LoadPrompt loads the prompt from a flag or uses a default prompt
@@ -12,7 +19,7 @@ func LoadPrompt(flagPrompt string) string {
 	if flagPrompt != "" {
 		return flagPrompt
 	}
-	return "Summarize the following text:"
+	return defaultPrompt
 }
 
 // ComputeHash computes the hash of the prompt (first 16 hex chars of SHA256)
