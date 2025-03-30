@@ -1,35 +1,33 @@
 # go-obsidian-ai-sum
 
-Summarize Obsidian Markdown pages using AI and store the result as a YAML file property.
+**go-obsidian-ai-sum** is a CLI tool that leverages AI to generate concise summaries for your Obsidian Markdown files and injects them directly into the YAML frontmatter. It can process individual files or entire directories recursively, making it perfect for automating vault maintenance.
 
 ## Features
 
-- 📁 Accepts a file or folder (recursively processes subfolders)
-- 🧠 Uses AI to generate summaries (default: OpenAI)
-- ✍️ Stores the summary in the frontmatter under `summarize_ai`
-- 🔁 Optionally overrides existing summaries
-- 🧾 Adds a `summarize_ai_hash` for tracking the prompt used
-- 🔧 Custom prompt support
-- 🔐 API key can be provided via environment variable or CLI flag
-- 🔄 AI provider is pluggable (planned for future)
+- **Recursive Processing:** Scans a single file or entire folders (with subfolders) for Markdown files.
+- **AI-Generated Summaries:** Uses OpenAI (default) to produce precise and concise summaries.
+- **Frontmatter Injection:** Automatically adds/updates `summarize_ai`, `summarize_ai_hash`, and `summarize_ai_tags` fields.
+- **Custom Prompt Support:** Allows the use of a custom prompt to tailor the summarization.
+- **Override Existing Summaries:** Optionally overwrite previously generated summaries.
+- **Cost Estimation:** Provides a rough estimate of API costs based on content length.
+- **Dry Run Mode:** Simulate the summarization process without making any API calls.
+- **Random File Order:** Option to process files in a random order.
+- **Pluggable AI Provider:** Designed for future support of alternative AI providers.
 
-## Example YAML Frontmatter
+## What It Does
 
-```yaml
----
-title: A New Hope
-year: 1977
-favorite: true
-summarize_ai: Summarized Text with AI
-summarize_ai_prompt_hash: 3f5a9c1b7e2d1a0f
-cast:
-  - Mark Hamill
-  - Harrison Ford
-  - Carrie Fisher
----
-```
+- **Reads** Markdown files (or entire folders).
+- **Sends** file content along with a prompt to an AI service.
+- **Receives** a summary and associated tags.
+- **Injects** the results into the file's YAML frontmatter—automatically updating or creating the necessary keys.
+
+## Warning
+
+> **WARNING:** This tool will modify your Markdown files directly. Ensure you have backups or work with copies. Use at your own risk—there is no warranty for any changes made.
 
 ## Installation
+
+Install the latest version via:
 
 ```bash
 go install github.com/dhcgn/go-obsidian-ai-sum@latest
@@ -38,25 +36,23 @@ go install github.com/dhcgn/go-obsidian-ai-sum@latest
 ## Usage
 
 ```bash
-go-obsidian-ai-sum \
-  --path ./vault \
-  --api-key sk-xxx \
-  --override \
-  --prompt "Summarize this file for sci-fi fans"
+go-obsidian-ai-sum --path ./vault --api-key YOUR_API_KEY [--override] [--prompt "Custom prompt"]
 ```
 
 ### CLI Flags
 
-| Flag          | Description                                      |
-|---------------|--------------------------------------------------|
-| `--path`      | File or folder to process                        |
-| `--api-key`   | (Optional) API key for the AI provider           |
-| `--override`  | If set, overwrites existing summaries            |
-| `--prompt`    | (Optional) Custom prompt for summarization       |
-
-If `--api-key` is not provided, it will use the `OPENAI_API_KEY` environment variable.
+| Flag                  | Description                                                    |
+|-----------------------|----------------------------------------------------------------|
+| `--path`              | Path to a Markdown file or folder                              |
+| `--api-key`           | API key for the AI provider (or use `OPENAI_API_KEY` environment variable) |
+| `--override`          | Overwrite existing summaries                                   |
+| `--prompt`            | Custom prompt for summarization                                |
+| `--dryrun`            | Run in simulation mode (no API calls)                          |
+| `--random-file-access`| Process files in a random order (optional)                     |
 
 ## Roadmap
 
-- [ ] Add support for multiple AI providers (e.g., Claude, Mistral)
-- [ ] Add language detection and multilingual summarization
+- Support additional AI providers (e.g., Claude, Mistral)
+- Multilingual summarization and language detection
+- Enhanced customization for frontmatter updates
+
