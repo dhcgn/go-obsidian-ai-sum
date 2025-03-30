@@ -23,7 +23,8 @@
             "program": "${workspaceFolder}/main.go",
             "args": [
                 "--path",
-                "${workspaceFolder}/testdata/",
+                "/home/dhe/Documents/demo/debugging/main",
+                "--dryrun"
             ],
         }
     ]

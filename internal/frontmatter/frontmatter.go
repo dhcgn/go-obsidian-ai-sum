@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -13,7 +14,7 @@ var (
 )
 
 // UpdateFrontmatter updates the YAML frontmatter with new summarize_ai and summarize_ai_hash fields.
-func UpdateFrontmatter(filePath string, summary string, hash string) error {
+func UpdateFrontmatter(filePath string, summary string, tags []string, hash string) error {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -23,7 +24,13 @@ func UpdateFrontmatter(filePath string, summary string, hash string) error {
 
 	// If no frontmatter exists, prepend one.
 	if !bytes.Equal(bytes.TrimSpace(lines[0]), delimiter) {
-		newFM := fmt.Sprintf("---\nsummarize_ai: %s\nsummarize_ai_hash: %s\n---\n", summary, hash)
+		var newFM string
+		if len(tags) > 0 {
+			newFM = fmt.Sprintf("---\nsummarize_ai: %s\nsummarize_ai_hash: %s\nsummarize_ai_tags:\n  - %s\n---\n",
+				summary, hash, strings.Join(tags, "\n  - "))
+		} else {
+			newFM = fmt.Sprintf("---\nsummarize_ai: %s\nsummarize_ai_hash: %s\n---\n", summary, hash)
+		}
 		newContent := newFM + string(content)
 		return os.WriteFile(filePath, []byte(newContent), os.ModePerm)
 	}
@@ -64,6 +71,26 @@ func UpdateFrontmatter(filePath string, summary string, hash string) error {
 	// Update or add the fields.
 	addOrUpdateYAMLField(mappingNode, "summarize_ai", summary)
 	addOrUpdateYAMLField(mappingNode, "summarize_ai_hash", hash)
+
+	// Handle tags - either update, remove, or skip
+	if len(tags) > 0 {
+		tagsNode := &yaml.Node{
+			Kind:    yaml.SequenceNode,
+			Style:   yaml.TaggedStyle, // This helps maintain proper indentation
+			Content: make([]*yaml.Node, len(tags)),
+		}
+		for i, tag := range tags {
+			tagsNode.Content[i] = &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: tag,
+				Style: yaml.TaggedStyle,
+			}
+		}
+		addOrUpdateYAMLFieldNode(mappingNode, "summarize_ai_tags", tagsNode)
+	} else {
+		// Remove existing tags field if present
+		removeYAMLField(mappingNode, "summarize_ai_tags")
+	}
 
 	updatedFM, err := yaml.Marshal(&node)
 	if err != nil {
@@ -106,4 +133,32 @@ func addOrUpdateYAMLField(node *yaml.Node, key, value string) {
 			Value: value,
 		},
 	)
+}
+
+// addOrUpdateYAMLFieldNode adds or updates a field in the YAML node with a custom node value.
+func addOrUpdateYAMLFieldNode(node *yaml.Node, key string, valueNode *yaml.Node) {
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			node.Content[i+1] = valueNode
+			return
+		}
+	}
+	node.Content = append(node.Content,
+		&yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: key,
+		},
+		valueNode,
+	)
+}
+
+// RemoveYAMLField removes a field from the YAML node.
+func removeYAMLField(node *yaml.Node, key string) {
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			// Remove both the key and value nodes
+			node.Content = append(node.Content[:i], node.Content[i+2:]...)
+			return
+		}
+	}
 }

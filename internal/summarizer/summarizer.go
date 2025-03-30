@@ -29,8 +29,8 @@ func ComputeHash(prompt string) string {
 }
 
 // InjectSummary injects the summary and hash into the YAML frontmatter
-func InjectSummary(filePath, summary, hash string) error {
+func InjectSummary(filePath, summary string, tags []string, hash string) error {
 	// This function should call the UpdateFrontmatter function from the frontmatter package
 	// to update the YAML frontmatter with the new summary and hash
-	return frontmatter.UpdateFrontmatter(filePath, summary, hash)
+	return frontmatter.UpdateFrontmatter(filePath, summary, tags, hash)
 }

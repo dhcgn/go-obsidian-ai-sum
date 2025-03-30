@@ -134,13 +134,13 @@ var rootCmd = &cobra.Command{
 					}
 
 					progress.UpdateTitle(fmt.Sprintf("Summarizing %s", file))
-					summary, _, err := summarizerInstance.Summarize(string(content), file, prompt)
+					summary, tags, err := summarizerInstance.Summarize(string(content), file, prompt)
 					if err != nil {
-						errChan <- fmt.Errorf("error summarizing file %s: %v", file, err)
+						errChan <- fmt.Errorf("error summarizing file Overloaded%s: %v", file, err)
 						continue
 					}
 
-					err = summarizer.InjectSummary(file, summary, hash)
+					err = summarizer.InjectSummary(file, summary, tags, hash)
 					if err != nil {
 						errChan <- fmt.Errorf("error injecting summary into file %s: %v", file, err)
 					}
