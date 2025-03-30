@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 var defaultIgnoreDirs = []string{
@@ -58,10 +61,12 @@ func ReadFiles(path string, override bool) ([]FileInfo, error) {
 					return nil
 				}
 
-				files = append(files, FileInfo{
-					Path:           path,
-					CharacterCount: len(content),
-				})
+				if isOutdated(content) {
+					files = append(files, FileInfo{
+						Path:           path,
+						CharacterCount: len(content),
+					})
+				}
 			}
 			return nil
 		})
@@ -79,12 +84,44 @@ func ReadFiles(path string, override bool) ([]FileInfo, error) {
 				return nil, nil
 			}
 
-			files = append(files, FileInfo{
-				Path:           path,
-				CharacterCount: len(content),
-			})
+			if isOutdated(content) {
+				files = append(files, FileInfo{
+					Path:           path,
+					CharacterCount: len(content),
+				})
+			}
 		}
 	}
 
 	return files, nil
+}
+
+// isOutdated checks if the file content is outdated based on the updated and summarize_ai_updated fields
+func isOutdated(content []byte) bool {
+	var frontmatter map[string]interface{}
+	if err := yaml.Unmarshal(content, &frontmatter); err != nil {
+		return true // Treat as outdated if there's an error parsing frontmatter
+	}
+
+	updatedStr, ok := frontmatter["updated"].(string)
+	if !ok {
+		return true // Treat as outdated if updated field is missing
+	}
+
+	updated, err := time.Parse("2006-01-02T15:04", updatedStr)
+	if err != nil {
+		return true // Treat as outdated if updated field is invalid
+	}
+
+	summarizeAIUpdatedStr, ok := frontmatter["summarize_ai_updated"].(string)
+	if !ok {
+		return true // Treat as outdated if summarize_ai_updated field is missing
+	}
+
+	summarizeAIUpdated, err := time.Parse("2006-01-02T15:04", summarizeAIUpdatedStr)
+	if err != nil {
+		return true // Treat as outdated if summarize_ai_updated field is invalid
+	}
+
+	return updated.After(summarizeAIUpdated)
 }
