@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 	Use:   "go-obsidian-ai-sum",
 	Short: "Summarize Obsidian Markdown pages using AI",
 	Run: func(cmd *cobra.Command, args []string) {
-		if apiKey == "" {
+		if apiKey == "" && !dryrun {
 			apiKey = os.Getenv("OPENAI_API_KEY")
 			if apiKey == "" {
 				pterm.Error.Println("API key is required. Provide it via --api-key flag or OPENAI_API_KEY environment variable.")
@@ -153,7 +153,9 @@ var rootCmd = &cobra.Command{
 					}
 
 					progress.UpdateTitle(fmt.Sprintf("Summarizing %s", file))
-					summary, tags, err := summarizerInstance.Summarize(string(content), file, prompt)
+					summary, tags, err := summarizerInstance.Summarize(string(content), file, prompt, func(s string) {
+						pterm.Warning.Println(s)
+					})
 					if err != nil {
 						errChan <- fmt.Errorf("error summarizing file Overloaded%s: %v", file, err)
 						continue
