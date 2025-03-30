@@ -24,18 +24,18 @@ type OpenAISummarizer struct {
 }
 
 const (
-	PlaceholerText = `{{Text}}`
-	PlaceholerPath = `{{Obsidian_Vault_Path}}`
+	PlaceholderText = `{{Text}}`
+	PlaceholerPath  = `{{Obsidian_Vault_Path}}`
 )
 
 // Summarize generates a summary using the OpenAI API
 func (s *OpenAISummarizer) Summarize(text, filepath, prompt string, warn func(string)) (string, []string, error) {
 	url := "https://api.openai.com/v1/responses"
 
-	if strings.Contains(prompt, PlaceholerText) {
-		prompt = strings.ReplaceAll(prompt, PlaceholerText, text)
+	if strings.Contains(prompt, PlaceholderText) {
+		prompt = strings.ReplaceAll(prompt, PlaceholderText, text)
 	} else {
-		return "", nil, fmt.Errorf("prompt must contain " + PlaceholerText + " placeholder")
+		return "", nil, fmt.Errorf("prompt must contain " + PlaceholderText + " placeholder")
 	}
 
 	if strings.Contains(prompt, PlaceholerPath) {

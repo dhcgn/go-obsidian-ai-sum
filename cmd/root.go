@@ -166,7 +166,7 @@ var rootCmd = &cobra.Command{
 						pterm.Warning.Println(s)
 					})
 					if err != nil {
-						errChan <- fmt.Errorf("error summarizing file Overloaded%s: %v", file, err)
+						errChan <- fmt.Errorf("error summarizing file %s: %v", file, err)
 						continue
 					}
 

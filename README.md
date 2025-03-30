@@ -73,6 +73,7 @@ go-obsidian-ai-sum --path ./vault --api-key YOUR_API_KEY [--override] [--prompt 
 | `--prompt`             | Custom prompt for summarization                                            |
 | `--dryrun`             | Run in simulation mode (no API calls)                                      |
 | `--random-file-access` | Process files in a random order (optional)                                 |
+| `--top`                | Process only this many files (0 for all)                                   |
 
 ## Roadmap
 
