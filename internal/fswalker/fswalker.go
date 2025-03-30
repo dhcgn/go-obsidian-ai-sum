@@ -30,8 +30,54 @@ type FileInfo struct {
 	CharacterCount int
 }
 
+func shouldProcessFile(content []byte, override, onlyOutOfDate bool) bool {
+	// Empty files are skipped
+	if len(content) == 0 {
+		return false
+	}
+
+	// If override is true, always process
+	if override {
+		return true
+	}
+
+	// Check for existing summary
+	hasSummary := strings.Contains(string(content), "summarize_ai:")
+	if !hasSummary {
+		return true
+	}
+
+	// At this point, we have a file with an existing summary
+	// Only continue if we're checking for outdated files
+	if !onlyOutOfDate {
+		return false
+	}
+
+	var frontmatter map[string]interface{}
+	if err := yaml.Unmarshal(content, &frontmatter); err != nil {
+		return false
+	}
+
+	// For onlyOutOfDate mode, we need both date fields
+	updatedStr, hasUpdated := frontmatter["updated"].(string)
+	summarizeAIUpdatedStr, hasSummarizeUpdated := frontmatter["summarize_ai_updated"].(string)
+
+	if !hasUpdated || !hasSummarizeUpdated {
+		return false
+	}
+
+	updated, err1 := time.Parse("2006-01-02T15:04", updatedStr)
+	summarizeAIUpdated, err2 := time.Parse("2006-01-02T15:04", summarizeAIUpdatedStr)
+
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	return updated.After(summarizeAIUpdated)
+}
+
 // ReadFiles reads a single file or all Markdown files in a folder recursively
-func ReadFiles(path string, override bool) ([]FileInfo, error) {
+func ReadFiles(path string, override bool, onlyOutOfDate bool) ([]FileInfo, error) {
 	var files []FileInfo
 
 	info, err := os.Stat(path)
@@ -53,15 +99,7 @@ func ReadFiles(path string, override bool) ([]FileInfo, error) {
 					return err
 				}
 
-				if len(content) == 0 {
-					return nil
-				}
-
-				if !override && strings.Contains(string(content), "summarize_ai:") {
-					return nil
-				}
-
-				if isOutdated(content) {
+				if shouldProcessFile(content, override, onlyOutOfDate) {
 					files = append(files, FileInfo{
 						Path:           path,
 						CharacterCount: len(content),
@@ -80,11 +118,7 @@ func ReadFiles(path string, override bool) ([]FileInfo, error) {
 				return nil, fmt.Errorf("failed to read file: %w", err)
 			}
 
-			if !override && strings.Contains(string(content), "summarize_ai:") {
-				return nil, nil
-			}
-
-			if isOutdated(content) {
+			if shouldProcessFile(content, override, onlyOutOfDate) {
 				files = append(files, FileInfo{
 					Path:           path,
 					CharacterCount: len(content),
@@ -94,34 +128,4 @@ func ReadFiles(path string, override bool) ([]FileInfo, error) {
 	}
 
 	return files, nil
-}
-
-// isOutdated checks if the file content is outdated based on the updated and summarize_ai_updated fields
-func isOutdated(content []byte) bool {
-	var frontmatter map[string]interface{}
-	if err := yaml.Unmarshal(content, &frontmatter); err != nil {
-		return true // Treat as outdated if there's an error parsing frontmatter
-	}
-
-	updatedStr, ok := frontmatter["updated"].(string)
-	if !ok {
-		return true // Treat as outdated if updated field is missing
-	}
-
-	updated, err := time.Parse("2006-01-02T15:04", updatedStr)
-	if err != nil {
-		return true // Treat as outdated if updated field is invalid
-	}
-
-	summarizeAIUpdatedStr, ok := frontmatter["summarize_ai_updated"].(string)
-	if !ok {
-		return true // Treat as outdated if summarize_ai_updated field is missing
-	}
-
-	summarizeAIUpdated, err := time.Parse("2006-01-02T15:04", summarizeAIUpdatedStr)
-	if err != nil {
-		return true // Treat as outdated if summarize_ai_updated field is invalid
-	}
-
-	return updated.After(summarizeAIUpdated)
 }
