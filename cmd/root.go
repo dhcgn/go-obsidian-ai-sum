@@ -11,6 +11,7 @@ import (
 	"github.com/dhcgn/go-obsidian-ai-sum/internal/fswalker"
 	"github.com/dhcgn/go-obsidian-ai-sum/internal/summarizer"
 	"github.com/pterm/pterm"
+	"github.com/pterm/pterm/putils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -39,6 +40,15 @@ var rootCmd = &cobra.Command{
 				pterm.Error.Println("API key is required. Provide it via --api-key flag or OPENAI_API_KEY environment variable.")
 				os.Exit(1)
 			}
+		}
+
+		// Add warning banner
+		pterm.DefaultBigText.WithLetters(putils.LettersFromStringWithStyle("WARNING!", pterm.NewStyle(pterm.FgLightRed))).Render()
+		pterm.Error.Println("This tool will modify your Markdown files directly!")
+		pterm.Warning.Println("Please ensure you have backups or work with copies of your files.")
+		pterm.Warning.Println("Press Ctrl+C now if you want to abort.")
+		if dryrun {
+			time.Sleep(3 * time.Second) // Give users time to read and react
 		}
 
 		start := time.Now()
