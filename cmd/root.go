@@ -24,6 +24,7 @@ var (
 	debug           bool
 	dryrun          bool
 	randomFileOrder bool
+	top             int
 )
 
 const (
@@ -34,7 +35,7 @@ var rootCmd = &cobra.Command{
 	Use:   "go-obsidian-ai-sum",
 	Short: "Summarize Obsidian Markdown pages using AI",
 	Run: func(cmd *cobra.Command, args []string) {
-		if apiKey == "" {
+		if apiKey == "" && !dryrun {
 			apiKey = os.Getenv("OPENAI_API_KEY")
 			if apiKey == "" {
 				pterm.Error.Println("API key is required. Provide it via --api-key flag or OPENAI_API_KEY environment variable.")
@@ -74,6 +75,14 @@ var rootCmd = &cobra.Command{
 			rand.Shuffle(len(files), func(i, j int) {
 				files[i], files[j] = files[j], files[i]
 			})
+		}
+
+		// Limit number of files to process
+		if top > 0 && top < len(files) {
+			pterm.Info.Printf("Limiting to the first %d files\n", top)
+			files = files[:top]
+		} else if top > len(files) {
+			pterm.Warning.Printf("Requested %d files, but only %d found. Processing all.\n", top, len(files))
 		}
 
 		// Cost estimation
@@ -153,9 +162,11 @@ var rootCmd = &cobra.Command{
 					}
 
 					progress.UpdateTitle(fmt.Sprintf("Summarizing %s", file))
-					summary, tags, err := summarizerInstance.Summarize(string(content), file, prompt)
+					summary, tags, err := summarizerInstance.Summarize(string(content), file, prompt, func(s string) {
+						pterm.Warning.Println(s)
+					})
 					if err != nil {
-						errChan <- fmt.Errorf("error summarizing file Overloaded%s: %v", file, err)
+						errChan <- fmt.Errorf("error summarizing file %s: %v", file, err)
 						continue
 					}
 
@@ -214,6 +225,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode to log payloads")
 	rootCmd.PersistentFlags().BoolVar(&dryrun, "dryrun", false, "Dry run mode - stops before making API calls")
 	rootCmd.PersistentFlags().BoolVar(&randomFileOrder, "random-file-access", false, "Process files in random order")
+	rootCmd.PersistentFlags().IntVar(&top, "top", 0, "Process only this many files (0 for all)")
 
 	rootCmd.MarkPersistentFlagRequired("path")
 }

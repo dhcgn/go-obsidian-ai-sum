@@ -41,7 +41,7 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 			line := frontLines[i]
 			trimmed := strings.TrimSpace(line)
 			if strings.HasPrefix(trimmed, "summarize_ai:") && !strings.HasPrefix(trimmed, "summarize_ai_hash:") {
-				newFront = append(newFront, "summarize_ai: "+summary)
+				newFront = append(newFront, fmt.Sprintf("summarize_ai: \"%s\"", summary))
 				updatedAI = true
 			} else if strings.HasPrefix(trimmed, "summarize_ai_hash:") {
 				newFront = append(newFront, "summarize_ai_hash: "+hash)
@@ -68,7 +68,7 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 
 		// If any key is missing, add it.
 		if !updatedAI {
-			newFront = append(newFront, "summarize_ai: "+summary)
+			newFront = append(newFront, fmt.Sprintf("summarize_ai: \"%s\"", summary))
 		}
 		if !updatedHash {
 			newFront = append(newFront, "summarize_ai_hash: "+hash)
@@ -101,7 +101,7 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 
 	// No frontmatter exists: create a new frontmatter block and prepend it.
 	var front []string
-	front = append(front, "summarize_ai: "+summary)
+	front = append(front, fmt.Sprintf("summarize_ai: \"%s\"", summary))
 	front = append(front, "summarize_ai_hash: "+hash)
 	if len(tags) > 0 {
 		front = append(front, "summarize_ai_tags:")
