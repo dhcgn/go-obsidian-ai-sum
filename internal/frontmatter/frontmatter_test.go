@@ -19,8 +19,7 @@ func TestUpdateFrontmatter(t *testing.T) {
 			expectedContent: `---
 summarize_ai: Test summary
 summarize_ai_hash: TestHash
----
-`,
+---`,
 			summary: "Test summary",
 			hash:    "TestHash",
 		},

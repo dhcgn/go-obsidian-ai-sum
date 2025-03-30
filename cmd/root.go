@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -15,12 +16,13 @@ import (
 )
 
 var (
-	path     string
-	apiKey   string
-	prompt   string
-	override bool
-	debug    bool
-	dryrun   bool
+	path            string
+	apiKey          string
+	prompt          string
+	override        bool
+	debug           bool
+	dryrun          bool
+	randomFileOrder bool
 )
 
 const (
@@ -55,6 +57,13 @@ var rootCmd = &cobra.Command{
 		summarizerInstance := summarizer.OpenAISummarizer{
 			APIKey: apiKey,
 			Debug:  debug,
+		}
+
+		// Randomize file order if requested
+		if randomFileOrder {
+			rand.Shuffle(len(files), func(i, j int) {
+				files[i], files[j] = files[j], files[i]
+			})
 		}
 
 		// Cost estimation
@@ -194,6 +203,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&override, "override", false, "Override existing summaries")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable debug mode to log payloads")
 	rootCmd.PersistentFlags().BoolVar(&dryrun, "dryrun", false, "Dry run mode - stops before making API calls")
+	rootCmd.PersistentFlags().BoolVar(&randomFileOrder, "random-file-access", false, "Process files in random order")
 
 	rootCmd.MarkPersistentFlagRequired("path")
 }

@@ -1,164 +1,120 @@
 package frontmatter
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
-var (
-	delimiter = []byte("---")
-)
-
-// UpdateFrontmatter updates the YAML frontmatter with new summarize_ai and summarize_ai_hash fields.
-func UpdateFrontmatter(filePath string, summary string, tags []string, hash string) error {
-	content, err := os.ReadFile(filePath)
+// UpdateFrontmatter updates (or creates) only the summarize_ai, summarize_ai_hash,
+// and summarize_ai_tags keys in the frontmatter, leaving all other text content untouched.
+func UpdateFrontmatter(filePath, summary string, tags []string, hash string) error {
+	// Read the original file content.
+	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
+	content := string(contentBytes)
 
-	lines := bytes.Split(content, []byte("\n"))
-
-	// If no frontmatter exists, prepend one.
-	if !bytes.Equal(bytes.TrimSpace(lines[0]), delimiter) {
-		var newFM string
-		if len(tags) > 0 {
-			newFM = fmt.Sprintf("---\nsummarize_ai: %s\nsummarize_ai_hash: %s\nsummarize_ai_tags:\n  - %s\n---\n",
-				summary, hash, strings.Join(tags, "\n  - "))
-		} else {
-			newFM = fmt.Sprintf("---\nsummarize_ai: %s\nsummarize_ai_hash: %s\n---\n", summary, hash)
-		}
-		newContent := newFM + string(content)
-		return os.WriteFile(filePath, []byte(newContent), os.ModePerm)
-	}
-
-	// Locate the closing delimiter.
-	closingIndex := -1
-	for i := 1; i < len(lines); i++ {
-		if bytes.Equal(bytes.TrimSpace(lines[i]), delimiter) {
-			closingIndex = i
-			break
-		}
-	}
-	if closingIndex == -1 {
-		return fmt.Errorf("no closing frontmatter delimiter found")
-	}
-
-	// Extract frontmatter content (lines between the delimiters).
-	fmLines := lines[1:closingIndex]
-	fmContent := bytes.Join(fmLines, []byte("\n"))
-
-	// Use yaml.Node to preserve key order.
-	var node yaml.Node
-	if len(bytes.TrimSpace(fmContent)) == 0 {
-		node.Kind = yaml.MappingNode
-	} else {
-		if err := yaml.Unmarshal(fmContent, &node); err != nil {
-			return fmt.Errorf("failed to unmarshal frontmatter: %w", err)
-		}
-	}
-
-	var mappingNode *yaml.Node
-	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
-		mappingNode = node.Content[0]
-	} else {
-		mappingNode = &node
-	}
-
-	// Update or add the fields.
-	addOrUpdateYAMLField(mappingNode, "summarize_ai", summary)
-	addOrUpdateYAMLField(mappingNode, "summarize_ai_hash", hash)
-
-	// Handle tags - either update, remove, or skip
-	if len(tags) > 0 {
-		tagsNode := &yaml.Node{
-			Kind:    yaml.SequenceNode,
-			Style:   yaml.TaggedStyle, // This helps maintain proper indentation
-			Content: make([]*yaml.Node, len(tags)),
-		}
-		for i, tag := range tags {
-			tagsNode.Content[i] = &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: tag,
-				Style: yaml.TaggedStyle,
+	// Check if file starts with a frontmatter block.
+	if strings.HasPrefix(content, "---") {
+		// Split content into lines.
+		lines := strings.Split(content, "\n")
+		// Find the closing delimiter line (the second occurrence of a line that equals '---').
+		closingIndex := -1
+		for i := 1; i < len(lines); i++ {
+			if strings.TrimSpace(lines[i]) == "---" {
+				closingIndex = i
+				break
 			}
 		}
-		addOrUpdateYAMLFieldNode(mappingNode, "summarize_ai_tags", tagsNode)
+		if closingIndex == -1 {
+			return fmt.Errorf("no closing frontmatter delimiter found")
+		}
+
+		// Process the existing frontmatter (lines[1:closingIndex]).
+		frontLines := lines[1:closingIndex]
+		var newFront []string
+		updatedAI, updatedHash, updatedTags := false, false, false
+
+		for i := 0; i < len(frontLines); i++ {
+			line := frontLines[i]
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "summarize_ai:") && !strings.HasPrefix(trimmed, "summarize_ai_hash:") {
+				newFront = append(newFront, "summarize_ai: "+summary)
+				updatedAI = true
+			} else if strings.HasPrefix(trimmed, "summarize_ai_hash:") {
+				newFront = append(newFront, "summarize_ai_hash: "+hash)
+				updatedHash = true
+			} else if strings.HasPrefix(trimmed, "summarize_ai_tags:") {
+				// Skip this line and the following indented lines.
+				if len(tags) > 0 {
+					newFront = append(newFront, "summarize_ai_tags:")
+					for _, tag := range tags {
+						newFront = append(newFront, "  - "+tag)
+					}
+				}
+				updatedTags = true
+				// Skip all subsequent indented lines.
+				j := i + 1
+				for j < len(frontLines) && frontLines[j] != "" && (frontLines[j][0] == ' ' || frontLines[j][0] == '\t') {
+					j++
+				}
+				i = j - 1 // Adjust loop index.
+			} else {
+				newFront = append(newFront, line)
+			}
+		}
+
+		// If any key is missing, add it.
+		if !updatedAI {
+			newFront = append(newFront, "summarize_ai: "+summary)
+		}
+		if !updatedHash {
+			newFront = append(newFront, "summarize_ai_hash: "+hash)
+		}
+		if !updatedTags && len(tags) > 0 {
+			newFront = append(newFront, "summarize_ai_tags:")
+			for _, tag := range tags {
+				newFront = append(newFront, "  - "+tag)
+			}
+		}
+
+		// Reassemble the frontmatter block exactly.
+		newFrontmatter := "---\n" + strings.Join(newFront, "\n") + "\n---"
+
+		// Reassemble the final file content:
+		// Keep the remainder (after the frontmatter) exactly as-is.
+		remainder := ""
+		if closingIndex+1 < len(lines) {
+			remainder = strings.Join(lines[closingIndex+1:], "\n")
+		}
+		finalContent := ""
+		if remainder != "" {
+			finalContent = newFrontmatter + "\n" + remainder
+		} else {
+			finalContent = newFrontmatter
+		}
+		// Do not add any extra newline at the end.
+		return os.WriteFile(filePath, []byte(finalContent), os.ModePerm)
+	}
+
+	// No frontmatter exists: create a new frontmatter block and prepend it.
+	var front []string
+	front = append(front, "summarize_ai: "+summary)
+	front = append(front, "summarize_ai_hash: "+hash)
+	if len(tags) > 0 {
+		front = append(front, "summarize_ai_tags:")
+		for _, tag := range tags {
+			front = append(front, "  - "+tag)
+		}
+	}
+	newFrontmatter := "---\n" + strings.Join(front, "\n") + "\n---"
+	finalContent := ""
+	if content != "" {
+		finalContent = newFrontmatter + "\n" + content
 	} else {
-		// Remove existing tags field if present
-		removeYAMLField(mappingNode, "summarize_ai_tags")
+		finalContent = newFrontmatter
 	}
-
-	updatedFM, err := yaml.Marshal(&node)
-	if err != nil {
-		return fmt.Errorf("failed to marshal updated frontmatter: %w", err)
-	}
-
-	// Reassemble the file.
-	newLines := [][]byte{}
-	newLines = append(newLines, delimiter)
-	fmUpdatedLines := bytes.Split(bytes.TrimSuffix(updatedFM, []byte("\n")), []byte("\n"))
-	newLines = append(newLines, fmUpdatedLines...)
-	newLines = append(newLines, delimiter)
-	restLines := lines[closingIndex+1:]
-	newContent := bytes.Join(newLines, []byte("\n"))
-	if len(restLines) > 0 {
-		newContent = append(newContent, '\n')
-		newContent = append(newContent, bytes.Join(restLines, []byte("\n"))...)
-	}
-	newContent = bytes.TrimRight(newContent, "\n")
-	newContent = append(newContent, '\n')
-
-	return os.WriteFile(filePath, newContent, os.ModePerm)
-}
-
-// addOrUpdateYAMLField adds or updates a field in the YAML node while preserving order.
-func addOrUpdateYAMLField(node *yaml.Node, key, value string) {
-	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
-			node.Content[i+1].Value = value
-			return
-		}
-	}
-	node.Content = append(node.Content,
-		&yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: key,
-		},
-		&yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: value,
-		},
-	)
-}
-
-// addOrUpdateYAMLFieldNode adds or updates a field in the YAML node with a custom node value.
-func addOrUpdateYAMLFieldNode(node *yaml.Node, key string, valueNode *yaml.Node) {
-	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
-			node.Content[i+1] = valueNode
-			return
-		}
-	}
-	node.Content = append(node.Content,
-		&yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: key,
-		},
-		valueNode,
-	)
-}
-
-// RemoveYAMLField removes a field from the YAML node.
-func removeYAMLField(node *yaml.Node, key string) {
-	for i := 0; i < len(node.Content); i += 2 {
-		if node.Content[i].Value == key {
-			// Remove both the key and value nodes
-			node.Content = append(node.Content[:i], node.Content[i+2:]...)
-			return
-		}
-	}
+	return os.WriteFile(filePath, []byte(finalContent), os.ModePerm)
 }
