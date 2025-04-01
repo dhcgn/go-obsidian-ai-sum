@@ -25,6 +25,7 @@ var (
 	dryrun          bool
 	randomFileOrder bool
 	top             int
+	onlyOutOfDate   bool
 )
 
 const (
@@ -53,7 +54,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		start := time.Now()
-		files, err := fswalker.ReadFiles(path, override)
+		files, err := fswalker.ReadFiles(path, override, onlyOutOfDate)
 		pterm.Info.Printf("Reading files took: %v\n", time.Since(start))
 		if err != nil {
 			pterm.Error.Printf("Error reading files: %v\n", err)
@@ -226,6 +227,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&dryrun, "dryrun", false, "Dry run mode - stops before making API calls")
 	rootCmd.PersistentFlags().BoolVar(&randomFileOrder, "random-file-access", false, "Process files in random order")
 	rootCmd.PersistentFlags().IntVar(&top, "top", 0, "Process only this many files (0 for all)")
+	rootCmd.PersistentFlags().BoolVar(&onlyOutOfDate, "only-out-of-date", false, "Only process files where updated > summarize_ai_updated")
 
 	rootCmd.MarkPersistentFlagRequired("path")
 }

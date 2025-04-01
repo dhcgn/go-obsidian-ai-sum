@@ -19,6 +19,7 @@ func TestUpdateFrontmatter(t *testing.T) {
 			expectedContent: `---
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---`,
 			summary: "Test summary",
 			hash:    "TestHash",
@@ -29,6 +30,7 @@ summarize_ai_hash: TestHash
 			expectedContent: `---
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Come Content`,
 			summary: "Test summary",
@@ -41,6 +43,7 @@ Come Content`,
 			expectedContent: `---
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 
 `,
@@ -61,6 +64,7 @@ Content below frontmatter.
 existing_key: existing_value
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 existing_key_lower: existing_value
 ---
 Content below frontmatter.
@@ -79,6 +83,7 @@ Content below frontmatter.
 existing_key: existing_value
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Content below frontmatter.
 `,
@@ -97,6 +102,7 @@ Content below frontmatter.
 existing_key: existing_value
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 
 Content below frontmatter.
@@ -115,6 +121,7 @@ Content below frontmatter.
 unrelated_key: unrelated_value
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Content below frontmatter.
 `,
@@ -184,6 +191,7 @@ summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
 summarize_ai_tags:
   - tag1
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Some content`,
 			summary: "Test summary",
@@ -200,6 +208,7 @@ summarize_ai_tags:
   - tag1
   - tag2
   - tag3
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Some content`,
 			summary: "Test summary",
@@ -224,6 +233,7 @@ summarize_ai_hash: TestHash
 summarize_ai_tags:
   - newtag1
   - newtag2
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Content here
 `,
@@ -246,6 +256,7 @@ Content here
 title: Example
 summarize_ai: "Test summary"
 summarize_ai_hash: TestHash
+summarize_ai_updated: 2025-03-23T10:43
 ---
 Content here
 `,
@@ -282,4 +293,11 @@ Content here
 			}
 		})
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 // UpdateFrontmatter updates (or creates) only the summarize_ai, summarize_ai_hash,
-// and summarize_ai_tags keys in the frontmatter, leaving all other text content untouched.
+// summarize_ai_tags, and summarize_ai_updated keys in the frontmatter, leaving all other text content untouched.
 func UpdateFrontmatter(filePath, summary string, tags []string, hash string) error {
 	// Read the original file content.
 	contentBytes, err := os.ReadFile(filePath)
@@ -15,6 +16,9 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 	content := string(contentBytes)
+
+	// Get the current timestamp in the desired format.
+	currentTimestamp := time.Now().Format("2006-01-02T15:04")
 
 	// Check if file starts with a frontmatter block.
 	if strings.HasPrefix(content, "---") {
@@ -35,12 +39,12 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 		// Process the existing frontmatter (lines[1:closingIndex]).
 		frontLines := lines[1:closingIndex]
 		var newFront []string
-		updatedAI, updatedHash, updatedTags := false, false, false
+		updatedAI, updatedHash, updatedTags, updatedTimestamp := false, false, false, false
 
 		for i := 0; i < len(frontLines); i++ {
 			line := frontLines[i]
 			trimmed := strings.TrimSpace(line)
-			if strings.HasPrefix(trimmed, "summarize_ai:") && !strings.HasPrefix(trimmed, "summarize_ai_hash:") {
+			if strings.HasPrefix(trimmed, "summarize_ai:") && !strings.HasPrefix(trimmed, "summarize_ai_hash:") && !strings.HasPrefix(trimmed, "summarize_ai_updated:") {
 				newFront = append(newFront, fmt.Sprintf("summarize_ai: \"%s\"", summary))
 				updatedAI = true
 			} else if strings.HasPrefix(trimmed, "summarize_ai_hash:") {
@@ -61,6 +65,9 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 					j++
 				}
 				i = j - 1 // Adjust loop index.
+			} else if strings.HasPrefix(trimmed, "summarize_ai_updated:") {
+				newFront = append(newFront, "summarize_ai_updated: "+currentTimestamp)
+				updatedTimestamp = true
 			} else {
 				newFront = append(newFront, line)
 			}
@@ -78,6 +85,9 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 			for _, tag := range tags {
 				newFront = append(newFront, "  - "+tag)
 			}
+		}
+		if !updatedTimestamp {
+			newFront = append(newFront, "summarize_ai_updated: "+currentTimestamp)
 		}
 
 		// Reassemble the frontmatter block exactly.
@@ -109,6 +119,7 @@ func UpdateFrontmatter(filePath, summary string, tags []string, hash string) err
 			front = append(front, "  - "+tag)
 		}
 	}
+	front = append(front, "summarize_ai_updated: "+currentTimestamp)
 	newFrontmatter := "---\n" + strings.Join(front, "\n") + "\n---"
 	finalContent := ""
 	if content != "" {
